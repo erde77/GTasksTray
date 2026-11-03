@@ -4,7 +4,7 @@ import XCTest
 @MainActor
 final class OAuthCallbackTests: XCTestCase {
     func testLoopbackCallbackValidatesStateBeforeReturningCode() async throws {
-        let callback = try OAuthCallback(state: "test-state")
+        let callback = try OAuthCallback(state: "test-state", language: .polish)
         defer { callback.stop() }
         var events = callback.events.makeAsyncIterator()
         guard case .ready(let port) = try await events.next() else {
@@ -16,8 +16,9 @@ final class OAuthCallbackTests: XCTestCase {
         let (_, rejected) = try await session.data(from: URL(string: base + "?state=wrong&code=ignored")!)
         XCTAssertEqual((rejected as? HTTPURLResponse)?.statusCode, 400)
 
-        let (_, accepted) = try await session.data(from: URL(string: base + "?state=test-state&code=abc%2B123")!)
+        let (body, accepted) = try await session.data(from: URL(string: base + "?state=test-state&code=abc%2B123")!)
         XCTAssertEqual((accepted as? HTTPURLResponse)?.statusCode, 200)
+        XCTAssertTrue(String(decoding: body, as: UTF8.self).contains("Wróć do GTasksTray"))
         guard case .code(let code) = try await events.next() else {
             return XCTFail("The valid callback did not return a code")
         }

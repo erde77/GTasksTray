@@ -36,9 +36,9 @@ struct GoogleTask: Decodable, Identifiable, Sendable {
         return links + [SourceLink(description: nil, link: link)]
     }
 
-    var displayTitle: String {
+    func displayTitle(in language: AppLanguage) -> String {
         guard let title, !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return "Bez tytułu"
+            return language.text("Untitled")
         }
         return title
     }
@@ -91,14 +91,14 @@ enum TaskDate {
         )
     }
 
-    static func scheduledDay(_ value: String) -> String? {
+    static func scheduledDay(_ value: String, locale: Locale) -> String? {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "yyyy-MM-dd"
         guard let date = formatter.date(from: String(value.prefix(10))) else { return nil }
-        formatter.locale = Locale(identifier: "pl_PL")
+        formatter.locale = locale
         formatter.dateStyle = .medium
         return formatter.string(from: date)
     }
@@ -110,15 +110,15 @@ enum TaskDate {
 }
 
 struct GoogleTasksAPI: Sendable {
-    struct RequestError: LocalizedError {
+    struct RequestError: AppLocalizedError {
         let status: Int
 
-        var errorDescription: String? {
+        func message(in language: AppLanguage) -> String {
             switch status {
-            case 403: "Google odmówił dostępu. Sprawdź, czy w projekcie włączono Google Tasks API i czy konto ma dostęp."
-            case 404: "Google nie znalazł tego zadania lub listy. Odśwież zadania."
-            case 429: "Google ograniczył liczbę zapytań. Spróbuj ponownie za chwilę."
-            default: "Google Tasks zwróciło błąd (HTTP \(status))."
+            case 403: language.text("Google denied access. Check that the Google Tasks API is enabled and your account has access.")
+            case 404: language.text("Google could not find this task or list. Refresh your tasks.")
+            case 429: language.text("Google is limiting requests. Try again in a moment.")
+            default: language.format("Google Tasks returned an error (HTTP %ld).", status)
             }
         }
     }

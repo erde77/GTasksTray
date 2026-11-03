@@ -31,7 +31,16 @@ final class GoogleTasksTests: XCTestCase {
         warsaw.timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/Warsaw"))
         let midnight = try XCTUnwrap(warsaw.date(from: DateComponents(year: 2026, month: 11, day: 3)))
         XCTAssertEqual(TaskDate.encode(midnight, calendar: warsaw), "2026-11-03T00:00:00Z")
-        XCTAssertEqual(TaskDate.scheduledDay("2026-11-03T00:00:00.000Z"), "3 lis 2026")
+        let timestamp = "2026-11-03T00:00:00.000Z"
+        XCTAssertEqual(TaskDate.scheduledDay(timestamp, locale: AppLanguage.polish.locale), "3 lis 2026")
+        XCTAssertEqual(TaskDate.scheduledDay(timestamp, locale: AppLanguage.english.locale), "Nov 3, 2026")
+    }
+
+    func testPolishTranslationsLoadFromResources() {
+        XCTAssertEqual(AppLanguage.english.text("New task"), "New task")
+        XCTAssertEqual(AppLanguage.polish.text("New task"), "Nowe zadanie")
+        XCTAssertEqual(AppLanguage.polish.format("Google Tasks · Open tasks: %ld", 42), "Google Tasks · Otwarte zadania: 42")
+        XCTAssertEqual(GoogleTasksAPI.RequestError(status: 500).message(in: .polish), "Google Tasks zwróciło błąd (HTTP 500).")
     }
 
     func testRecentCompletedTasksAreOrderedAcrossLists() throws {

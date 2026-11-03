@@ -4,6 +4,8 @@
 <dict>
     <key>CFBundleExecutable</key>
     <string>GTasksTray</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
     <key>CFBundleIdentifier</key>
     <string>pl.gtaskstray.app</string>
     <key>CFBundleName</key>
@@ -19,7 +21,7 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSAppleEventsUsageDescription</key>
-    <string>GTasksTray sprawdza, czy Google Tasks jest już otwarte w Chrome, aby przełączyć kartę bez otwierania duplikatu.</string>
+    <string>GTasksTray checks for an existing Google Tasks tab in Chrome so it can switch to that tab.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>

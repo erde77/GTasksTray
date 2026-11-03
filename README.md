@@ -1,36 +1,38 @@
 # GTasksTray
 
-Polska aplikacja na macOS, która pokazuje liczbę otwartych zadań Google Tasks w pasku menu. Kliknij ikonę, by przejrzeć zadania ze wszystkich list, zobaczyć notatki, daty i linki do źródeł, oznaczyć zadanie jako ukończone lub dodać nowe. Sekcja **Ukończone** pokazuje pięć ostatnich zadań, a przycisk **Pokaż więcej** odsłania starsze. Po ukończeniu zadania zobaczysz animację i usłyszysz krótki dźwięk, który możesz wyłączyć w menu aplikacji.
+A native macOS menu bar app for Google Tasks. The menu bar icon shows your open task count. Click it to view tasks across all your lists, see notes and scheduled dates, mark tasks complete, or add a new task. The **Completed** section shows the five most recent completions. Select **Show more** to see older ones.
 
-Przycisk na dole panelu przełącza na istniejącą kartę Google Tasks w Chrome lub otwiera nową. Przy pierwszej próbie macOS może poprosić o zgodę na Automatyzację Chrome. Bez tej zgody przycisk otworzy nową kartę.
+Completing a task plays a short sound and animates the checkmark. You can mute the sound or switch between English and Polish in the app’s **⋯** menu. GTasksTray starts in Polish when Polish is your preferred system language and in English otherwise. It remembers your selection.
 
-## Uruchomienie
+**Open in Chrome** switches to an existing Google Tasks tab or opens a new one. macOS may ask for permission to automate Chrome the first time. Without that permission, the app opens a new tab.
 
-Potrzebujesz macOS 13 lub nowszego, narzędzi Xcode ze Swiftem 6 oraz Google Chrome do otwierania widoku webowego. W katalogu projektu uruchom:
+## Build and run
+
+You need macOS 13 or later and Xcode with Swift 6. Install Google Chrome if you want to open the web view from the app.
 
 ```sh
 ./scripts/build-app.sh
 open dist/GTasksTray.app
 ```
 
-Aplikację znajdziesz w górnym pasku menu. Gotowy pakiet `dist/GTasksTray.app` możesz też przenieść do folderu Aplikacje.
+Look for the GTasksTray icon in the menu bar. You can also move `dist/GTasksTray.app` to your Applications folder.
 
-## Pierwsze połączenie z kontem Google
+## Connect your Google account
 
-1. Wybierz lub utwórz projekt w [Google Cloud Console](https://console.cloud.google.com/) i włącz [Google Tasks API](https://console.cloud.google.com/apis/library/tasks.googleapis.com).
-2. W [Google Auth Platform](https://console.cloud.google.com/auth/overview) skonfiguruj ekran zgody. Dla prywatnego konta Google wybierz **External** i w sekcji **Audience** dodaj swój adres jako użytkownika testowego. W **Data Access** dodaj zakres `https://www.googleapis.com/auth/tasks`.
-3. W sekcji **Clients** utwórz klienta OAuth typu **Desktop app** i pobierz jego plik JSON.
-4. Kliknij ikonę GTasksTray, wybierz **Wybierz plik OAuth…** i wskaż pobrany plik. Kliknij **Zaloguj się przez Google**, wybierz konto w przeglądarce i zaakceptuj dostęp do zadań.
-5. Wróć do panelu. Aplikacja odświeża dane w tle co 90 sekund. Możesz też wymusić odświeżenie przyciskiem w nagłówku.
+1. Select or create a project in Google Cloud and enable the Google Tasks API. [Google Cloud Console](https://console.cloud.google.com/) · [Google Tasks API](https://console.cloud.google.com/apis/library/tasks.googleapis.com)
+2. Set up the OAuth consent screen. For a personal Google account, select **External** and add your email as a test user under **Audience**. Add the `https://www.googleapis.com/auth/tasks` scope under **Data Access**. [Google Auth Platform](https://console.cloud.google.com/auth/overview)
+3. Under **Clients**, create an OAuth client of type **Desktop app** and download its JSON file.
+4. Click the GTasksTray icon, select **Choose OAuth file…**, and open the downloaded file. Select **Sign in with Google**, choose your account in the browser, and grant access to your tasks.
+5. Return to GTasksTray. The app syncs every 90 seconds, and you can refresh it manually from the panel header.
 
-Aplikacja przechowuje konfigurację OAuth i token odświeżania w Pęku kluczy macOS. W trybie **External → Testing** Google wygasza zgodę po siedmiu dniach. Aplikacja poprosi wtedy o ponowne logowanie. [Dokumentacja Google](https://support.google.com/cloud/answer/15549945)
+GTasksTray stores the OAuth client settings and refresh token in the macOS Keychain. If the OAuth app is set to **External → Testing**, Google expires the authorization after seven days and GTasksTray prompts you to sign in again. [Google Cloud documentation](https://support.google.com/cloud/answer/15549945)
 
-Przy kilku kontach Google wybierz w Chrome to samo konto, którego używasz w GTasksTray. Google Tasks API udostępnia dzień zaplanowania zadania. Godziny, cykle i dodatkowe terminy ustawisz w pełnym widoku webowym. [Dokumentacja Google Tasks API](https://developers.google.com/workspace/tasks/reference/rest/v1/tasks)
+If you use more than one Google account, choose the same account in Chrome and GTasksTray. You can schedule tasks by date in GTasksTray. To set a time, recurrence, or deadline, open Google Tasks in Chrome. [Google Tasks API reference](https://developers.google.com/workspace/tasks/reference/rest/v1/tasks)
 
-## Testy
+## Tests
 
 ```sh
 swift test
 ```
 
-Testy sprawdzają stronicowanie, liczenie otwartych zadań, dodawanie i kończenie zadań na danych testowych, zapis daty oraz odbiór odpowiedzi OAuth na lokalnym adresie.
+The tests cover pagination, open task counts, creating and completing tasks, sorting completed tasks, date formatting, and the local OAuth callback.

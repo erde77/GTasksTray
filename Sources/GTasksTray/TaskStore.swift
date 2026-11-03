@@ -29,8 +29,11 @@ final class TaskStore: ObservableObject {
     @Published private(set) var isSigningIn = false
     @Published private(set) var isSaving = false
     @Published private(set) var completion: Completion?
-    @Published private var actionError: String?
-    @Published private var refreshError: String?
+    @Published var language = AppLanguage.saved {
+        didSet { UserDefaults.standard.set(language.rawValue, forKey: AppLanguage.preferenceKey) }
+    }
+    @Published private var actionError: (any Error)?
+    @Published private var refreshError: (any Error)?
     private(set) var openGroups: [TaskGroup] = []
     private(set) var completedTasks: [CompletedTaskEntry] = []
 
@@ -49,7 +52,7 @@ final class TaskStore: ObservableObject {
     }
 
     var openCount: Int { openGroups.reduce(0) { $0 + $1.tasks.count } }
-    var error: String? { actionError ?? refreshError }
+    var error: String? { (actionError ?? refreshError).map(message(for:)) }
 
     static func openCount(in groups: [TaskGroup]) -> Int {
         groups.reduce(0) { count, group in
@@ -64,7 +67,7 @@ final class TaskStore: ObservableObject {
                 connection = credentials.refreshToken == nil ? .signedOut : .connected
             }
         } catch {
-            actionError = message(for: error)
+            actionError = error
         }
     }
 
@@ -80,7 +83,7 @@ final class TaskStore: ObservableObject {
             }
             actionError = nil
         } catch {
-            actionError = message(for: error)
+            actionError = error
         }
     }
 
@@ -90,7 +93,7 @@ final class TaskStore: ObservableObject {
         actionError = nil
         signInTask = Task {
             do {
-                let token = try await oauth.signIn(client: credentials.client)
+                let token = try await oauth.signIn(client: credentials.client, language: language)
                 try Task.checkCancellation()
                 guard let refreshToken = token.refresh_token else {
                     throw GoogleOAuth.Error.missingRefreshToken
@@ -104,7 +107,7 @@ final class TaskStore: ObservableObject {
             } catch is CancellationError {
                 // The user closed the login flow.
             } catch {
-                if !Task.isCancelled { actionError = message(for: error) }
+                if !Task.isCancelled { actionError = error }
             }
             signInTask = nil
             isSigningIn = false
@@ -122,7 +125,7 @@ final class TaskStore: ObservableObject {
             try clearSession()
             actionError = nil
         } catch {
-            actionError = message(for: error)
+            actionError = error
         }
     }
 
@@ -143,7 +146,7 @@ final class TaskStore: ObservableObject {
             hasLoaded = true
             refreshError = nil
         } catch {
-            refreshError = message(for: error)
+            refreshError = error
         }
     }
 
@@ -159,7 +162,7 @@ final class TaskStore: ObservableObject {
             Task { await refresh(force: true) }
             return true
         } catch {
-            actionError = message(for: error)
+            actionError = error
             return false
         }
     }
@@ -177,7 +180,7 @@ final class TaskStore: ObservableObject {
                 try await api.complete(taskID: task.id, listID: listID, token: $0)
             }
             guard completed.isCompleted else {
-                actionError = "Google Tasks nie potwierdziło ukończenia zadania. Odśwież listę i spróbuj ponownie."
+                actionError = AppMessage("Google Tasks did not confirm completion. Refresh the list and try again.")
                 return
             }
             completion = .confirmed(location)
@@ -189,7 +192,7 @@ final class TaskStore: ObservableObject {
             groups[groupIndex].tasks[taskIndex] = completed
             Task { await refresh(force: true) }
         } catch {
-            actionError = message(for: error)
+            actionError = error
         }
     }
 
@@ -203,13 +206,13 @@ final class TaskStore: ObservableObject {
 
     func openInChrome(_ url: URL) async {
         guard let chrome = NSWorkspace.shared.urlForApplication(withBundleIdentifier: ChromeTasksTab.browserID) else {
-            actionError = "Zainstaluj Google Chrome, aby otworzyć zadania w przeglądarce."
+            actionError = AppMessage("Install Google Chrome to open tasks in your browser.")
             return
         }
         do {
             _ = try await NSWorkspace.shared.open([url], withApplicationAt: chrome, configuration: .init())
         } catch {
-            actionError = "Nie udało się otworzyć karty w Google Chrome."
+            actionError = AppMessage("Could not open a tab in Google Chrome.")
         }
     }
 
@@ -266,12 +269,13 @@ final class TaskStore: ObservableObject {
     }
 
     private func message(for error: any Error) -> String {
+        if let localized = error as? any AppLocalizedError { return localized.message(in: language) }
         if let networkError = error as? URLError {
             return networkError.code == .notConnectedToInternet
-                ? "Brak połączenia z internetem."
-                : "Nie udało się połączyć z Google. Spróbuj ponownie."
+                ? language.text("No internet connection.")
+                : language.text("Could not connect to Google. Try again.")
         }
-        if error is DecodingError { return "Nie udało się odczytać danych." }
+        if error is DecodingError { return language.text("Could not read the data.") }
         return error.localizedDescription
     }
 }

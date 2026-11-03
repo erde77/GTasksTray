@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TaskCalendar: View {
     @Binding var selection: Date
+    let language: AppLanguage
     let finish: () -> Void
 
     @Environment(\.calendar) private var systemCalendar
@@ -25,8 +26,8 @@ struct TaskCalendar: View {
                     .font(.system(size: 14, weight: .semibold))
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
-                monthButton(offset: -1, symbol: "chevron.left", label: "Poprzedni miesiąc")
-                monthButton(offset: 1, symbol: "chevron.right", label: "Następny miesiąc")
+                monthButton(offset: -1, symbol: "chevron.left", label: language.text("Previous month"))
+                monthButton(offset: 1, symbol: "chevron.right", label: language.text("Next month"))
             }
 
             LazyVGrid(columns: columns, spacing: 4) {
@@ -52,7 +53,7 @@ struct TaskCalendar: View {
         .panelCard()
     }
 
-    private func monthButton(offset: Int, symbol: String, label: LocalizedStringKey) -> some View {
+    private func monthButton(offset: Int, symbol: String, label: String) -> some View {
         Button {
             guard let start = calendar.dateInterval(of: .month, for: displayedMonth ?? selection)?.start else { return }
             displayedMonth = calendar.date(byAdding: .month, value: offset, to: start)

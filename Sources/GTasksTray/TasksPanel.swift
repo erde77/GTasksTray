@@ -11,6 +11,7 @@ struct TasksPanel: View {
     @State private var adding = false
     @State private var completedLimit = Self.recentCompletedCount
     @State private var chromeHovered = false
+    private var language: AppLanguage { store.language }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,11 +28,11 @@ struct TasksPanel: View {
                 } else if store.hasLoaded {
                     tasksView
                 } else if store.isRefreshing {
-                    ProgressView("Pobieranie zadań…")
+                    ProgressView(language.text("Loading tasks…"))
                         .controlSize(.small)
                 } else {
-                    placeholder("arrow.clockwise", title: "Zadania czekają na synchronizację") {
-                        Button("Odśwież zadania") { Task { await store.refresh(force: true) } }
+                    placeholder("arrow.clockwise", title: language.text("Tasks are waiting to sync")) {
+                        Button(language.text("Refresh tasks")) { Task { await store.refresh(force: true) } }
                             .panelButton(prominent: true)
                     }
                 }
@@ -44,7 +45,7 @@ struct TasksPanel: View {
         }
         .frame(width: PanelStyle.width, height: PanelStyle.height)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: adding)
-        .environment(\.locale, Locale(identifier: "pl_PL"))
+        .environment(\.locale, language.locale)
         .onChange(of: store.connection) { _ in
             adding = false
             completedLimit = Self.recentCompletedCount
@@ -61,8 +62,8 @@ struct TasksPanel: View {
                 }
                 .panelButton()
                 .disabled(store.isSaving)
-                .help("Wróć do zadań")
-                .accessibilityLabel("Wróć do zadań")
+                .help(language.text("Back to tasks"))
+                .accessibilityLabel(language.text("Back to tasks"))
             } else {
                 Image(systemName: "checklist")
                     .font(.system(size: 18, weight: .semibold))
@@ -72,7 +73,7 @@ struct TasksPanel: View {
                     .accessibilityHidden(true)
             }
 
-            Text(adding ? "Nowe zadanie" : "Google Tasks")
+            Text(adding ? language.text("New task") : "Google Tasks")
                 .font(.system(size: 17, weight: .semibold))
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 5)
@@ -106,31 +107,45 @@ struct TasksPanel: View {
             .panelButton()
             .disabled(store.isBusy)
             .keyboardShortcut("r", modifiers: .command)
-            .help("Odśwież zadania (⌘R)")
-            .accessibilityLabel(store.isRefreshing ? "Odświeżanie zadań" : "Odśwież zadania")
+            .help(language.text("Refresh tasks (⌘R)"))
+            .accessibilityLabel(store.isRefreshing ? language.text("Refreshing tasks") : language.text("Refresh tasks"))
 
-            AddTaskButton("Dodaj") {
+            AddTaskButton(language.text("Add")) {
                 adding = true
             }
             .disabled(store.groups.isEmpty)
             .keyboardShortcut("n", modifiers: .command)
-            .help("Dodaj zadanie (⌘N)")
+            .help(language.text("Add task (⌘N)"))
         }
     }
 
     private var options: some View {
         Menu {
+            Menu(language.text("Language")) {
+                ForEach(AppLanguage.allCases) { option in
+                    Button {
+                        store.language = option
+                    } label: {
+                        if option == language {
+                            Label(option.name, systemImage: "checkmark")
+                        } else {
+                            Text(option.name)
+                        }
+                    }
+                }
+            }
+            Divider()
             if store.connection == .signedOut {
-                Button("Zmień plik klienta OAuth…", action: chooseClient)
+                Button(language.text("Change OAuth client file…"), action: chooseClient)
                     .disabled(store.isBusy)
             }
             if store.connection == .connected {
-                Button("Wyloguj") { store.signOut() }
+                Button(language.text("Sign out")) { store.signOut() }
                     .disabled(store.isBusy)
             }
-            Toggle("Dźwięk ukończenia", isOn: $completionSoundEnabled)
+            Toggle(language.text("Completion sound"), isOn: $completionSoundEnabled)
             Divider()
-            Button("Zakończ GTasksTray") { NSApp.terminate(nil) }
+            Button(language.text("Quit GTasksTray")) { NSApp.terminate(nil) }
         } label: {
             Image(systemName: "ellipsis")
                 .font(.system(size: 15, weight: .semibold))
@@ -139,30 +154,30 @@ struct TasksPanel: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Opcje aplikacji")
-        .accessibilityLabel("Opcje aplikacji")
+        .help(language.text("App options"))
+        .accessibilityLabel(language.text("App options"))
     }
 
     private var connectionView: some View {
-        placeholder("person.crop.circle", title: "Połącz konto Google") {
+        placeholder("person.crop.circle", title: language.text("Connect your Google account")) {
             if store.connection == .unconfigured {
-                Text("Wybierz plik klienta OAuth z Google Cloud, aby połączyć aplikację z Google Tasks.")
+                Text(language.text("Select your Google Cloud OAuth client file to connect the app to Google Tasks."))
                     .foregroundStyle(.secondary)
-                Button("Wybierz plik OAuth…", action: chooseClient)
+                Button(language.text("Choose OAuth file…"), action: chooseClient)
                     .panelButton(prominent: true)
                 Link(
-                    "Jak skonfigurować klienta OAuth?",
+                    language.text("How do I set up an OAuth client?"),
                     destination: URL(string: "https://developers.google.com/identity/protocols/oauth2/native-app#creatingcred")!
                 )
                 .font(.caption)
             } else if store.isSigningIn {
-                ProgressView("Dokończ logowanie w przeglądarce…")
+                ProgressView(language.text("Finish signing in in your browser…"))
                     .controlSize(.small)
-                Button("Anuluj logowanie") { store.cancelSignIn() }
+                Button(language.text("Cancel sign-in")) { store.cancelSignIn() }
             } else {
-                Text("Zaloguj się, aby wyświetlać i dodawać zadania bezpośrednio z paska menu.")
+                Text(language.text("Sign in to view and add tasks from the menu bar."))
                     .foregroundStyle(.secondary)
-                Button("Zaloguj się przez Google") { store.signIn() }
+                Button(language.text("Sign in with Google")) { store.signIn() }
                     .panelButton(prominent: true)
             }
         }
@@ -172,7 +187,7 @@ struct TasksPanel: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 9) {
-                    Text("Do zrobienia")
+                    Text(language.text("To do"))
                         .font(.system(size: 23, weight: .semibold))
                         .accessibilityAddTraits(.isHeader)
                     Text(store.openCount, format: .number)
@@ -185,7 +200,7 @@ struct TasksPanel: View {
                 .accessibilityElement(children: .combine)
 
                 if store.openCount == 0 {
-                    Label("Wszystko zrobione", systemImage: "checkmark.circle")
+                    Label(language.text("All done"), systemImage: "checkmark.circle")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -197,7 +212,7 @@ struct TasksPanel: View {
                 }
 
                 if !store.completedTasks.isEmpty {
-                    Label("Ukończone", systemImage: "checkmark.circle")
+                    Label(language.text("Completed"), systemImage: "checkmark.circle")
                         .font(.system(size: 15, weight: .semibold))
                         .accessibilityAddTraits(.isHeader)
                         .padding(.top, 8)
@@ -210,12 +225,12 @@ struct TasksPanel: View {
                             Button {
                                 completedLimit += 20
                             } label: {
-                                Label("Pokaż więcej", systemImage: "chevron.down")
+                                Label(language.text("Show more"), systemImage: "chevron.down")
                             }
                             .panelButton()
                         }
                         if completedLimit > Self.recentCompletedCount {
-                            Button("Pokaż mniej") { completedLimit = Self.recentCompletedCount }
+                            Button(language.text("Show less")) { completedLimit = Self.recentCompletedCount }
                                 .panelButton()
                         }
                     }
@@ -247,14 +262,15 @@ struct TasksPanel: View {
     private func taskRow(_ task: GoogleTask, in list: GoogleTaskList, completedAt: Date? = nil) -> some View {
         let location = TaskLocation(listID: list.id, taskID: task.id)
         let confirmed = store.completion == .confirmed(location)
+        let title = task.displayTitle(in: language)
         return HStack(alignment: .top, spacing: 9) {
             if task.isCompleted {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.secondary)
                     .frame(width: 22, height: 20)
-                    .accessibilityLabel("Ukończone")
+                    .accessibilityLabel(language.text("Completed"))
             } else if confirmed {
-                CompletionMark(tint: .accentColor)
+                CompletionMark(tint: .accentColor, accessibilityTitle: language.text("Completed"))
             } else if store.completion == .saving(location) {
                 ProgressView().controlSize(.mini).frame(width: 22, height: 20)
             } else {
@@ -269,12 +285,12 @@ struct TasksPanel: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(store.isBusy)
-                .help("Oznacz jako ukończone")
-                .accessibilityLabel("Ukończ zadanie: \(task.displayTitle)")
+                .help(language.text("Mark as completed"))
+                .accessibilityLabel(language.format("Complete task: %@", title))
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(task.displayTitle)
+                Text(title)
                     .font(.system(size: 13, weight: .medium))
                     .strikethrough(task.isCompleted || confirmed)
                     .foregroundStyle(task.isCompleted ? .secondary : .primary)
@@ -289,19 +305,16 @@ struct TasksPanel: View {
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
-                if let due = task.due.flatMap(TaskDate.scheduledDay) {
-                    Label("Zaplanowano: \(due)", systemImage: "calendar")
+                if let due = task.due.flatMap({ TaskDate.scheduledDay($0, locale: language.locale) }) {
+                    Label(language.format("Scheduled: %@", due), systemImage: "calendar")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 if let completedAt {
-                    Label {
-                        Text("Ukończono: \(completedAt, format: .dateTime.day().month(.abbreviated).year())")
-                    } icon: {
-                        Image(systemName: "checkmark")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    let date = completedAt.formatted(.dateTime.day().month(.abbreviated).year().locale(language.locale))
+                    Label(language.format("Completed: %@", date), systemImage: "checkmark")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 let links = task.sourceLinks
                 ForEach(links.indices, id: \.self) { index in
@@ -312,7 +325,7 @@ struct TasksPanel: View {
                             Task { await store.openInChrome(url) }
                         } label: {
                             let description = source.description ?? ""
-                            Label(description.isEmpty ? "Otwórz źródło" : description, systemImage: "link")
+                            Label(description.isEmpty ? language.text("Open source link") : description, systemImage: "link")
                                 .font(.caption)
                         }
                         .buttonStyle(.link)
@@ -360,7 +373,7 @@ struct TasksPanel: View {
                 Image(systemName: "xmark").foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Zamknij komunikat")
+            .accessibilityLabel(language.text("Dismiss message"))
         }
         .font(.caption)
         .padding(9)
@@ -376,7 +389,7 @@ struct TasksPanel: View {
             HStack(spacing: 8) {
                 Image(systemName: "globe")
                     .foregroundStyle(.secondary)
-                Text("Otwórz w Chrome")
+                Text(language.text("Open in Chrome"))
                 Spacer()
                 Image(systemName: "arrow.up.right")
                     .font(.system(size: 10, weight: .semibold))
@@ -390,7 +403,7 @@ struct TasksPanel: View {
         }
         .buttonStyle(.plain)
         .onHover { chromeHovered = $0 }
-        .accessibilityLabel("Otwórz Google Tasks w Chrome")
+        .accessibilityLabel(language.text("Open Google Tasks in Chrome"))
         .padding(.horizontal, PanelStyle.inset)
         .padding(.vertical, 9)
     }
@@ -398,6 +411,7 @@ struct TasksPanel: View {
 
 private struct CompletionMark: View {
     let tint: Color
+    let accessibilityTitle: String
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var expanded = false
@@ -417,7 +431,7 @@ private struct CompletionMark: View {
                 .animation(reduceMotion ? nil : .spring(response: 0.27, dampingFraction: 0.45), value: expanded)
         }
         .frame(width: 22, height: 20)
-        .accessibilityLabel("Ukończone")
+        .accessibilityLabel(accessibilityTitle)
         .onAppear { expanded = true }
     }
 }

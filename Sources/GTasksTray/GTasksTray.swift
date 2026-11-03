@@ -33,8 +33,9 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             button.action = #selector(togglePanel)
         }
         statusItem = item
-        statusSubscription = store.$groups.combineLatest(store.$connection, store.$hasLoaded).sink { [weak self] groups, connection, hasLoaded in
-            self?.updateStatusItem(groups: groups, showCount: connection == .connected && hasLoaded)
+        statusSubscription = store.$groups.combineLatest(store.$connection, store.$hasLoaded, store.$language)
+            .sink { [weak self] groups, connection, hasLoaded, language in
+                self?.updateStatusItem(groups: groups, showCount: connection == .connected && hasLoaded, language: language)
         }
 
         popover.behavior = .transient
@@ -60,11 +61,11 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         store.cancelSignIn()
     }
 
-    private func updateStatusItem(groups: [TaskGroup], showCount: Bool) {
+    private func updateStatusItem(groups: [TaskGroup], showCount: Bool, language: AppLanguage) {
         guard let button = statusItem?.button else { return }
         let count = TaskStore.openCount(in: groups)
         button.title = showCount ? " \(count)" : ""
-        button.toolTip = showCount ? "Google Tasks · Otwarte zadania: \(count)" : "Google Tasks"
+        button.toolTip = showCount ? language.format("Google Tasks · Open tasks: %ld", count) : "Google Tasks"
         button.setAccessibilityLabel(button.toolTip)
     }
 
@@ -88,8 +89,9 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.close()
         activate()
         let panel = NSOpenPanel()
-        panel.title = "Wybierz plik klienta OAuth"
-        panel.message = "Wskaż plik JSON pobrany z Google Cloud dla klienta typu Desktop app."
+        let language = store.language
+        panel.title = language.text("Choose an OAuth client file")
+        panel.message = language.text("Select the JSON file downloaded from Google Cloud for a Desktop app client.")
         panel.allowedContentTypes = [.json]
         panel.canChooseDirectories = false
         panel.canChooseFiles = true

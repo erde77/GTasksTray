@@ -18,6 +18,7 @@ struct NewTaskForm: View {
     @State private var calendarOpen = false
     @FocusState private var titleFocused: Bool
 
+    private var language: AppLanguage { store.language }
     private var trimmedTitle: String { title.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var trimmedNotes: String { notes.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var tooLong: Bool { trimmedTitle.utf16.count > 1024 || trimmedNotes.utf16.count > 8192 }
@@ -35,10 +36,10 @@ struct NewTaskForm: View {
                     }
                     details
                     if calendarOpen {
-                        TaskCalendar(selection: $dueDate) { calendarOpen = false }
+                        TaskCalendar(selection: $dueDate, language: language) { calendarOpen = false }
                     }
                     if tooLong {
-                        Label("Tytuł może mieć do 1024 znaków, a notatka do 8192.", systemImage: "exclamationmark.circle")
+                        Label(language.text("The title can be up to 1,024 characters and the note up to 8,192."), systemImage: "exclamationmark.circle")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -63,11 +64,11 @@ struct NewTaskForm: View {
 
     private var editor: some View {
         VStack(alignment: .leading, spacing: 0) {
-            TextField("Co jest do zrobienia?", text: $title)
+            TextField(language.text("What needs to be done?"), text: $title)
                 .textFieldStyle(.plain)
                 .font(.system(size: 20, weight: .semibold))
                 .focused($titleFocused)
-                .accessibilityLabel("Tytuł zadania")
+                .accessibilityLabel(language.text("Task title"))
                 .onSubmit(save)
                 .padding(.horizontal, 15)
                 .padding(.vertical, 16)
@@ -77,9 +78,9 @@ struct NewTaskForm: View {
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $notes)
                     .scrollContentBackground(.hidden)
-                    .accessibilityLabel("Notatka do zadania")
+                    .accessibilityLabel(language.text("Task note"))
                 if notes.isEmpty {
-                    Text("Dodaj notatkę (opcjonalnie)")
+                    Text(language.text("Add a note (optional)"))
                         .foregroundStyle(.secondary)
                         .padding(.leading, 5)
                         .padding(.top, 8)
@@ -98,7 +99,7 @@ struct NewTaskForm: View {
     private var details: some View {
         VStack(alignment: .leading, spacing: 8) {
             if !calendarOpen {
-                Text("Szczegóły")
+                Text(language.text("Details"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .padding(.leading, 4)
@@ -107,9 +108,9 @@ struct NewTaskForm: View {
             VStack(spacing: 0) {
                 if !calendarOpen {
                     HStack {
-                        fieldLabel("Lista", icon: "list.bullet", color: .accentColor)
+                        fieldLabel(language.text("List"), icon: "list.bullet", color: .accentColor)
                         Spacer(minLength: 10)
-                        Picker("Lista", selection: $listID) {
+                        Picker(language.text("List"), selection: $listID) {
                             ForEach(store.groups) { group in
                                 Text(group.list.title).tag(group.id)
                             }
@@ -125,9 +126,9 @@ struct NewTaskForm: View {
                 }
 
                 HStack {
-                    fieldLabel("Z datą", icon: "calendar", color: .orange)
+                    fieldLabel(language.text("With a date"), icon: "calendar", color: .orange)
                     Spacer(minLength: 10)
-                    Toggle("Z datą", isOn: $hasDueDate)
+                    Toggle(language.text("With a date"), isOn: $hasDueDate)
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .controlSize(.small)
@@ -155,13 +156,13 @@ struct NewTaskForm: View {
 
     private var dateOptions: some View {
         HStack(spacing: 7) {
-            datePill("Jutro", icon: "sunrise", choice: .tomorrow)
-            datePill("Pojutrze", icon: "sun.max", choice: .dayAfterTomorrow)
-            datePill("Data", icon: "calendar", choice: .custom)
+            datePill(language.text("Tomorrow"), icon: "sunrise", choice: .tomorrow)
+            datePill(language.text("In two days"), icon: "sun.max", choice: .dayAfterTomorrow)
+            datePill(language.text("Date"), icon: "calendar", choice: .custom)
         }
     }
 
-    private func datePill(_ title: LocalizedStringKey, icon: String, choice: DateChoice) -> some View {
+    private func datePill(_ title: String, icon: String, choice: DateChoice) -> some View {
         let selected = dateChoice == choice
         return Button {
             if choice == .custom, dateChoice != .custom {
@@ -192,7 +193,7 @@ struct NewTaskForm: View {
         }
     }
 
-    private func fieldLabel(_ title: LocalizedStringKey, icon: String, color: Color) -> some View {
+    private func fieldLabel(_ title: String, icon: String, color: Color) -> some View {
         Label {
             Text(title).font(.system(size: 13, weight: .medium))
         } icon: {
@@ -209,13 +210,13 @@ struct NewTaskForm: View {
             Spacer()
             if store.isSaving {
                 ProgressView().controlSize(.small)
-                    .accessibilityLabel("Zapisywanie zadania")
+                    .accessibilityLabel(language.text("Saving task"))
             }
-            Button("Anuluj", action: close)
+            Button(language.text("Cancel"), action: close)
                 .panelButton()
                 .keyboardShortcut(.cancelAction)
                 .disabled(store.isSaving)
-            AddTaskButton("Dodaj zadanie", action: save)
+            AddTaskButton(language.text("Add task"), action: save)
             .keyboardShortcut(.return, modifiers: .command)
             .disabled(!canSave)
         }

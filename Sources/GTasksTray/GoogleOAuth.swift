@@ -35,9 +35,11 @@ struct GoogleCredentials: Codable {
 }
 
 enum CredentialStore {
-    struct StoreError: LocalizedError {
+    struct StoreError: AppLocalizedError {
         let status: OSStatus
-        var errorDescription: String? { "Pęk kluczy macOS zwrócił błąd (\(status))." }
+        func message(in language: AppLanguage) -> String {
+            language.format("The macOS Keychain returned an error (%ld).", Int(status))
+        }
     }
 
     private static var query: [String: Any] {
@@ -82,7 +84,7 @@ struct GoogleOAuth {
         let refresh_token: String?
     }
 
-    enum Error: LocalizedError {
+    enum Error: AppLocalizedError {
         case invalidClientFile
         case browserUnavailable
         case callbackUnavailable
@@ -91,26 +93,26 @@ struct GoogleOAuth {
         case missingRefreshToken
         case requestFailed(status: Int, code: String?)
 
-        var errorDescription: String? {
+        func message(in language: AppLanguage) -> String {
             switch self {
             case .invalidClientFile:
-                "Wybierz plik JSON pobrany z Google Cloud dla klienta OAuth typu Desktop app."
+                language.text("Choose the JSON file downloaded from Google Cloud for a Desktop app OAuth client.")
             case .browserUnavailable:
-                "Nie udało się otworzyć przeglądarki."
+                language.text("Could not open the browser.")
             case .callbackUnavailable:
-                "Nie udało się odebrać odpowiedzi z przeglądarki. Spróbuj zalogować się ponownie."
+                language.text("Could not receive a response from the browser. Try signing in again.")
             case .timedOut:
-                "Upłynął czas na zalogowanie. Spróbuj ponownie."
+                language.text("Sign-in timed out. Try again.")
             case .consentDenied:
-                "Google nie udzielił dostępu do zadań."
+                language.text("Google did not grant access to tasks.")
             case .missingRefreshToken:
-                "Google nie zwrócił tokenu do synchronizacji. Spróbuj zalogować się ponownie."
+                language.text("Google did not return a token for syncing. Try signing in again.")
             case .requestFailed(_, "invalid_grant"):
-                "Sesja Google wygasła. Zaloguj się ponownie."
+                language.text("Your Google session has expired. Sign in again.")
             case .requestFailed(_, "invalid_client"), .requestFailed(_, "unauthorized_client"):
-                "Google odrzucił klienta OAuth. Wybierz aktualny plik JSON typu Desktop app."
+                language.text("Google rejected the OAuth client. Choose a current Desktop app JSON file.")
             case .requestFailed(let status, _):
-                "Logowanie Google zakończyło się błędem (HTTP \(status))."
+                language.format("Google sign-in failed (HTTP %ld).", status)
             }
         }
     }
@@ -119,11 +121,11 @@ struct GoogleOAuth {
         let error: String
     }
 
-    func signIn(client: GoogleOAuthClient) async throws -> Token {
+    func signIn(client: GoogleOAuthClient, language: AppLanguage) async throws -> Token {
         let verifier = try randomURLSafeString()
         let state = try randomURLSafeString()
         let challenge = Self.base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))
-        let callback = try OAuthCallback(state: state)
+        let callback = try OAuthCallback(state: state, language: language)
         let redirect: String
         let code: String
 
@@ -223,7 +225,7 @@ final class OAuthCallback {
     private let continuation: AsyncThrowingStream<Event, Swift.Error>.Continuation
     private let timeout: DispatchWorkItem
 
-    init(state: String) throws {
+    init(state: String, language: AppLanguage) throws {
         let queue = DispatchQueue(label: "pl.gtaskstray.oauth-callback")
         let parameters = NWParameters.tcp
         parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
@@ -254,7 +256,7 @@ final class OAuthCallback {
         listener.newConnectionHandler = { connection in
             connection.start(queue: queue)
             queue.asyncAfter(deadline: .now() + 5) { connection.cancel() }
-            Self.receive(on: connection, state: state, continuation: continuation)
+            Self.receive(on: connection, state: state, language: language, continuation: continuation)
         }
         listener.start(queue: queue)
         queue.asyncAfter(deadline: .now() + 180, execute: timeout)
@@ -269,6 +271,7 @@ final class OAuthCallback {
     private static func receive(
         on connection: NWConnection,
         state: String,
+        language: AppLanguage,
         continuation: AsyncThrowingStream<Event, Swift.Error>.Continuation,
         buffer: Data = Data()
     ) {
@@ -279,11 +282,11 @@ final class OAuthCallback {
                 let status = result == nil ? "400 Bad Request" : "200 OK"
                 let message: String
                 switch result {
-                case .success: message = "Odebrano odpowiedź Google. Wróć do GTasksTray, aby sprawdzić połączenie."
-                case .failure: message = "Google nie udzielił dostępu. Wróć do GTasksTray."
-                case nil: message = "Nieprawidłowe żądanie."
+                case .success: message = language.text("Google responded. Return to GTasksTray to check the connection.")
+                case .failure: message = language.text("Google did not grant access. Return to GTasksTray.")
+                case nil: message = language.text("Invalid request.")
                 }
-                let body = "<!doctype html><html lang=\"pl\"><meta charset=\"utf-8\"><title>GTasksTray</title><p>\(message)</p></html>"
+                let body = "<!doctype html><html lang=\"\(language.rawValue)\"><meta charset=\"utf-8\"><title>GTasksTray</title><p>\(message)</p></html>"
                 let response = "HTTP/1.1 \(status)\r\nContent-Type: text/html; charset=utf-8\r\n"
                     + "Content-Length: \(body.utf8.count)\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n\(body)"
                 connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in
@@ -295,7 +298,7 @@ final class OAuthCallback {
                     }
                 })
             } else if request.count < 8192, !done, error == nil {
-                receive(on: connection, state: state, continuation: continuation, buffer: request)
+                receive(on: connection, state: state, language: language, continuation: continuation, buffer: request)
             } else {
                 connection.cancel()
             }

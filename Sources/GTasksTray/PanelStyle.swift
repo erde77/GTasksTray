@@ -7,10 +7,10 @@ enum PanelStyle {
 }
 
 struct AddTaskButton: View {
-    let title: LocalizedStringKey
+    let title: String
     let action: () -> Void
 
-    init(_ title: LocalizedStringKey, action: @escaping () -> Void) {
+    init(_ title: String, action: @escaping () -> Void) {
         self.title = title
         self.action = action
     }
