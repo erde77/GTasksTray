@@ -21,6 +21,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private let popover = NSPopover()
     private var statusItem: NSStatusItem?
     private var statusSubscription: AnyCancellable?
+    private var languageSubscription: AnyCancellable?
     private var syncTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -43,6 +44,12 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController = NSHostingController(
             rootView: TasksPanel(store: store, chooseClient: { [weak self] in self?.chooseClient() })
         )
+        languageSubscription = store.$language.removeDuplicates().dropFirst().sink { [weak self] _ in
+            // Close after SwiftUI finishes handling the language menu selection.
+            DispatchQueue.main.async {
+                self?.popover.performClose(nil)
+            }
+        }
 
         syncTask = Task { [weak store] in
             while !Task.isCancelled {
