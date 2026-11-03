@@ -27,7 +27,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "checklist", accessibilityDescription: nil)
+            button.image = NSImage(systemSymbolName: "checkmark.square", accessibilityDescription: nil)
             button.image?.isTemplate = true
             button.imagePosition = .imageLeading
             button.target = self
